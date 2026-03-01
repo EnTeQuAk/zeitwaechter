@@ -1,0 +1,6 @@
+.pio/
+.vscode/
+*.swp
+*.swo
+*~
+.ralph/
