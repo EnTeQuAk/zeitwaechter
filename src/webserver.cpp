@@ -29,7 +29,7 @@ static const char PAGE_HEAD[] PROGMEM = R"(<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Time Tracker</title>
+<title>Zeitw&auml;chter</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#eee;padding:16px;max-width:480px;margin:0 auto}
@@ -66,7 +66,7 @@ input[type=number]{width:80px}
 // -- HTML: control panel (JS-driven, no server-side values) --
 static const char CONTROLS_HTML[] PROGMEM = R"html(
 <div id="ctrl" style="display:none">
-<h1>&#9202; Time Tracker</h1>
+<h1>&#9202; Zeitw&auml;chter</h1>
 <div id="phase-box">
 <p id="msg"></p>
 <p id="rem">--:--</p>
@@ -128,17 +128,17 @@ static void handle_root() {
 
     // Config form
     html += F("<div id='cfg'>");
-    html += F("<h1>&#9202; Time Tracker</h1>");
+    html += F("<h1>&#9202; Zeitw&auml;chter</h1>");
     html += F("<button id='cfg-stop' class='btn' style='background:#ef4444;display:none;"
               "margin-bottom:12px' onclick=\"doAction('/stop');this.style.display='none'\">"
               "&#9209; Timer stoppen</button>");
 
     // Green phase
     html += F("<div class='phase phase-green'>");
-    html += F("<label>&#x1F7E2; Phase 1 — Minuten</label>");
+    html += F("<label>&#x1F7E2; Phase 1</label>");
     html += F("<div class='row'><input type='number' name='gm' min='1' max='120' value='");
     html += _cfg->green_minutes;
-    html += F("' form='f'></div>");
+    html += F("' form='f'> Minuten</div>");
     html += F("<label>Nachricht</label>");
     html += F("<input type='text' name='gmsg' maxlength='63' value='");
     html += _cfg->green_msg;
@@ -146,10 +146,10 @@ static void handle_root() {
 
     // Yellow phase
     html += F("<div class='phase phase-yellow'>");
-    html += F("<label>&#x1F7E1; Phase 2 — Minuten</label>");
+    html += F("<label>&#x1F7E1; Phase 2</label>");
     html += F("<div class='row'><input type='number' name='ym' min='1' max='120' value='");
     html += _cfg->yellow_minutes;
-    html += F("' form='f'></div>");
+    html += F("' form='f'> Minuten</div>");
     html += F("<label>Nachricht</label>");
     html += F("<input type='text' name='ymsg' maxlength='63' value='");
     html += _cfg->yellow_msg;
@@ -157,10 +157,10 @@ static void handle_root() {
 
     // Final phase
     html += F("<div class='phase phase-final'>");
-    html += F("<label>&#x1F7E3; Phase 3 — Minuten</label>");
+    html += F("<label>&#x1F7E3; Phase 3</label>");
     html += F("<div class='row'><input type='number' name='fm' min='1' max='120' value='");
     html += _cfg->final_minutes;
-    html += F("' form='f'></div>");
+    html += F("' form='f'> Minuten</div>");
     html += F("<label>Nachricht</label>");
     html += F("<input type='text' name='fmsg' maxlength='63' value='");
     html += _cfg->final_msg;
