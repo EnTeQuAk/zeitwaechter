@@ -30,7 +30,7 @@ speaker, touch buttons). M5Dial support planned.
 - **3-phase countdown**: configurable durations per phase (1-120 minutes each)
 - **Color-coded display**: green/yellow/magenta with phase-specific messages
 - **3-phase progress bar**: shows all phases proportionally, dims elapsed time
-- **Web UI** at `http://timetracker.local`, configure phases, messages, volume
+- **Web UI** at `http://zeitwaechter.local`, configure phases, messages, volume
 - **Live remote control**: pause, resume, stop, lock buttons from phone
 - **Child-proof**: physical buttons locked via web UI, BtnB acknowledges alarm
 - **Auto-dim**: screen dims after 30s idle, wakes on interaction or phase change
@@ -75,7 +75,7 @@ python ~/.platformio/packages/tool-esptoolpy/esptool.py \
 3. Open `http://192.168.4.1` in your browser
 4. Enter your home WiFi credentials and save
 5. Device reboots and connects to your WiFi
-6. Access the web UI at `http://timetracker.local`
+6. Access the web UI at `http://zeitwaechter.local`
 
 If you ever enter wrong WiFi credentials, the device falls back to the
 TimeTracker AP after 15 seconds so you can fix them.
@@ -84,7 +84,7 @@ TimeTracker AP after 15 seconds so you can fix them.
 
 ### Web UI (parent)
 
-Open `http://timetracker.local` on your phone:
+Open `http://zeitwaechter.local` on your phone:
 
 - Set phase durations (minutes) and messages per phase
 - Adjust speaker volume

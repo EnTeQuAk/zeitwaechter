@@ -21,14 +21,13 @@ static constexpr int16_t BAR_BOTTOM_MARGIN = 28; // space for hint text below
 
 // Filled 5-pointed star centered at (cx, cy) with outer radius r.
 static void draw_star(int16_t cx, int16_t cy, int16_t r, uint16_t col) {
-    constexpr float kPi = 3.14159265f;
     float inner_r = r * 0.38f;
 
     // 10 vertices alternating outer/inner
     int16_t px[10], py[10];
     for (int i = 0; i < 5; i++) {
-        float oa = (i * 72 - 90) * kPi / 180.0f;
-        float ia = (i * 72 - 54) * kPi / 180.0f;
+        float oa = (i * 72 - 90) * PI / 180.0f;
+        float ia = (i * 72 - 54) * PI / 180.0f;
         px[i * 2] = cx + static_cast<int16_t>(r * cosf(oa));
         py[i * 2] = cy + static_cast<int16_t>(r * sinf(oa));
         px[i * 2 + 1] = cx + static_cast<int16_t>(inner_r * cosf(ia));

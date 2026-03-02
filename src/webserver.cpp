@@ -247,7 +247,7 @@ static void handle_save() {
         html += FPSTR(PAGE_HEAD);
         html += F("<div class='saved'>&#x2705; Gespeichert!<br><br>");
         html += F("Neustart...<br>Verbinde mit deinem WiFi und &ouml;ffne<br>");
-        html += F("<b>timetracker.local</b></div>");
+        html += F("<b>zeitwaechter.local</b></div>");
         html += F("</body></html>");
         server.send(200, "text/html", html);
         delay(1000);
@@ -434,7 +434,7 @@ void webserver_start(TimerConfig& cfg) {
         snprintf(_ip_buf, sizeof(_ip_buf), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
         Serial.printf("AP IP: %s\n", _ip_buf);
 
-        MDNS.begin("timetracker");
+        MDNS.begin("zeitwaechter");
         Serial.println("mDNS started");
 
         register_handlers();
@@ -475,7 +475,7 @@ void webserver_loop() {
         snprintf(_ip_buf, sizeof(_ip_buf), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
         Serial.printf("AP fallback IP: %s\n", _ip_buf);
 
-        MDNS.begin("timetracker");
+        MDNS.begin("zeitwaechter");
         register_handlers();
         server.begin();
 
@@ -492,12 +492,12 @@ void webserver_loop() {
         Serial.printf("WiFi connected, IP: %s\n", _ip_buf);
 
         WiFi.setSleep(true); // modem sleep between beacons, saves ~20-40mA
-        MDNS.begin("timetracker");
+        MDNS.begin("zeitwaechter");
 
         register_handlers();
         server.begin();
 
-        Serial.printf("Web server at http://%s/ (timetracker.local)\n", _ip_buf);
+        Serial.printf("Web server at http://%s/ (zeitwaechter.local)\n", _ip_buf);
     }
 
     if (_connected) {
