@@ -299,6 +299,9 @@ void display_running(const TimerState& ts, const TimerConfig& cfg) {
     // Update time and bar every second
     if (time_changed || phase_changed) {
         uint16_t col = phase_color(ts.phase);
+        // Clear time area to avoid ghost digits when text gets shorter (e.g. 10:00 → 9:59)
+        int16_t th = 44; // approximate height of DejaVu40
+        M5.Display.fillRect(0, g_cy - 10 - th / 2, g_screen_w, th, COL_BG);
         draw_text_large(buf, g_cx, g_cy - 10, col);
         draw_phase_bar(ts, cfg);
     }
