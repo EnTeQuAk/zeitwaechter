@@ -3,10 +3,11 @@
 #include <Arduino.h>
 #include "config.h"
 
-enum class Phase : uint8_t { IDLE, GREEN, YELLOW, FINAL, DONE };
+enum class Phase : uint8_t { IDLE, GREEN, YELLOW, FINAL, DONE, PAUSED };
 
 struct TimerState {
     Phase    phase;
+    Phase    paused_from;       // which phase we were in before pause
     uint32_t total_seconds;       // green + yellow + final
     uint32_t remaining_seconds;   // overall remaining
     uint32_t phase_remaining;     // seconds left in current phase
@@ -24,6 +25,12 @@ bool timer_tick();
 
 // Stop and go back to IDLE
 void timer_stop();
+
+// Pause the timer (preserves remaining time)
+void timer_pause();
+
+// Resume from pause
+void timer_resume();
 
 // Get current state (read-only snapshot)
 const TimerState& timer_state();

@@ -1,8 +1,11 @@
 #include "webserver.h"
 
+#include <Arduino.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <WebServer.h>
+#include <M5Unified.h>
+#include "timer.h"
 
 static WebServer server(80);
 static TimerConfig* cfg_ = nullptr;
@@ -11,10 +14,12 @@ static bool ap_mode_ = false;
 static char ip_buf_[16] = "";
 static bool config_changed_ = false;
 static bool start_requested_ = false;
+static bool pause_requested_ = false;
+static bool resume_requested_ = false;
+static bool stop_requested_ = false;
+static bool buttons_locked_ = false;
 
-// -- HTML template --
-// Embedded as a raw string. Substitutions done via snprintf.
-
+// -- HTML: shared head with CSS --
 static const char PAGE_HEAD[] PROGMEM = R"(<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -37,22 +42,83 @@ input[type=number]{width:80px}
 .row{display:flex;gap:8px;align-items:center}
 .row label{flex:1}
 .row input{flex:0 0 80px}
-button{
-  display:block;width:100%;padding:14px;border:none;border-radius:12px;
-  background:#4361ee;color:#fff;font-size:1.1em;cursor:pointer;margin-top:8px}
-button:active{background:#3a56d4}
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:12px;
+  color:#fff;font-size:1.1em;cursor:pointer;margin-top:8px}
+.btn:active{opacity:.85}
 .wifi{background:#0d1b2a;border-radius:12px;padding:16px;margin-bottom:12px}
 .saved{text-align:center;color:#2ec4b6;font-size:1.2em;padding:40px 0}
+#phase-box{border:3px solid #555;border-radius:16px;padding:24px;text-align:center;margin-bottom:16px}
+#rem{font-size:3em;font-weight:bold;font-variant-numeric:tabular-nums;margin:8px 0}
+#msg{font-size:1.1em;opacity:.8}
+.bar-bg{background:#222;border-radius:10px;height:14px;margin-bottom:16px;overflow:hidden}
+.bar-fill{height:100%;border-radius:10px;transition:width .8s ease}
+.ctrl-row{display:flex;gap:8px;margin-bottom:8px}
+.ctrl-row .btn{flex:1;margin-top:0}
 </style>
 </head>
 <body>
 )";
 
+// -- HTML: control panel (JS-driven, no server-side values) --
+static const char CONTROLS_HTML[] PROGMEM = R"html(
+<div id="ctrl" style="display:none">
+<h1>&#9202; Time Tracker</h1>
+<div id="phase-box">
+<p id="msg"></p>
+<p id="rem">--:--</p>
+</div>
+<div class="bar-bg"><div id="bar-fill" class="bar-fill" style="width:0"></div></div>
+<div class="ctrl-row">
+<button id="pause-btn" class="btn" style="background:#f59e0b" onclick="doAction('/pause')">&#9208; Pause</button>
+<button id="resume-btn" class="btn" style="background:#10b981;display:none" onclick="doAction('/resume')">&#9654; Weiter</button>
+</div>
+<button id="stop-btn" class="btn" style="background:#ef4444;display:none" onclick="doAction('/stop')">&#9209; Fertig</button>
+<button id="lock-btn" class="btn" style="background:#6366f1" onclick="doAction('/lock')">&#128274; Tasten sperren</button>
+<p id="clock" style="text-align:center;margin-top:16px;font-size:1.3em;color:#2ec4b6"></p>
+<button class="btn" style="background:#333;margin-top:12px" onclick="showCfg()">&#9881; Einstellungen</button>
+</div>
+)html";
+
+// -- HTML: JavaScript --
+static const char PAGE_SCRIPT[] PROGMEM = R"js(
+<script>
+const colors={GREEN:'#10b981',YELLOW:'#f59e0b',FINAL:'#e040fb',DONE:'#e040fb',PAUSED:'#888'};
+function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function doAction(u){fetch(u,{method:'POST'});}
+function showCfg(){document.getElementById('ctrl').style.display='none';document.getElementById('cfg').style.display='block';}
+function poll(){
+fetch('/status').then(r=>r.json()).then(d=>{
+const ctrl=document.getElementById('ctrl'),cfg=document.getElementById('cfg');
+if(d.phase==='IDLE'){ctrl.style.display='none';cfg.style.display='block';return;}
+if(cfg.style.display!=='block'){ctrl.style.display='block';cfg.style.display='none';}
+document.getElementById('rem').textContent=fmt(d.remaining);
+document.getElementById('msg').textContent=d.message;
+const c=colors[d.phase]||'#888';
+document.getElementById('phase-box').style.borderColor=c;
+document.getElementById('rem').style.color=c;
+const pct=d.total>0?(d.remaining/d.total*100):0;
+const bf=document.getElementById('bar-fill');bf.style.width=pct+'%';bf.style.background=c;
+const isDone=d.phase==='DONE',isPaused=d.phase==='PAUSED',isRunning=!isDone&&!isPaused;
+document.getElementById('pause-btn').style.display=isRunning?'block':'none';
+document.getElementById('resume-btn').style.display=isPaused?'block':'none';
+document.getElementById('stop-btn').style.display=isDone?'block':'none';
+document.getElementById('lock-btn').textContent=d.locked?'\u{1F512} Entsperren':'\u{1F513} Sperren';
+}).catch(()=>{});}
+setInterval(poll,1000);poll();
+setInterval(()=>{const e=document.getElementById('clock');if(e)e.textContent=new Date().toLocaleTimeString('de-DE');},1000);
+</script>
+)js";
+
 static void handle_root() {
-    // Build page with current values
     String html;
-    html.reserve(3000);
+    html.reserve(5120);
     html += FPSTR(PAGE_HEAD);
+
+    // Controls panel (JS-driven)
+    html += FPSTR(CONTROLS_HTML);
+
+    // Config form
+    html += F("<div id='cfg'>");
     html += F("<h1>&#9202; Time Tracker</h1>");
 
     // Green phase
@@ -88,6 +154,14 @@ static void handle_root() {
     html += cfg_->final_msg;
     html += F("' form='f'></div>");
 
+    // Volume
+    html += F("<div class='wifi'>");
+    html += F("<label>&#x1F50A; Lautst&auml;rke</label>");
+    html += F("<input type='range' name='vol' min='0' max='255' value='");
+    html += cfg_->volume;
+    html += F("' form='f' style='width:100%;accent-color:#4361ee;'>");
+    html += F("</div>");
+
     // WiFi
     html += F("<div class='wifi'>");
     html += F("<label>WiFi SSID</label>");
@@ -99,11 +173,13 @@ static void handle_root() {
     html += cfg_->wifi_pass;
     html += F("' form='f'></div>");
 
-    // Start button
+    // Submit
     html += F("<form id='f' method='POST' action='/save'>");
-    html += F("<button type='submit'>Speichern &amp; Timer starten</button>");
+    html += F("<button type='submit' class='btn' style='background:#4361ee'>Speichern &amp; Timer starten</button>");
     html += F("</form>");
+    html += F("</div>");  // #cfg
 
+    html += FPSTR(PAGE_SCRIPT);
     html += F("</body></html>");
 
     server.send(200, "text/html", html);
@@ -113,11 +189,28 @@ static void handle_save() {
     if (server.hasArg("gm"))   cfg_->green_minutes  = server.arg("gm").toInt();
     if (server.hasArg("ym"))   cfg_->yellow_minutes = server.arg("ym").toInt();
     if (server.hasArg("fm"))   cfg_->final_minutes  = server.arg("fm").toInt();
-    if (server.hasArg("gmsg")) strncpy(cfg_->green_msg,  server.arg("gmsg").c_str(), MSG_MAX_LEN - 1);
-    if (server.hasArg("ymsg")) strncpy(cfg_->yellow_msg, server.arg("ymsg").c_str(), MSG_MAX_LEN - 1);
-    if (server.hasArg("fmsg")) strncpy(cfg_->final_msg,  server.arg("fmsg").c_str(), MSG_MAX_LEN - 1);
-    if (server.hasArg("ssid")) strncpy(cfg_->wifi_ssid,  server.arg("ssid").c_str(), SSID_MAX_LEN - 1);
-    if (server.hasArg("pass")) strncpy(cfg_->wifi_pass,  server.arg("pass").c_str(), PASS_MAX_LEN - 1);
+    if (server.hasArg("vol"))  cfg_->volume = constrain(server.arg("vol").toInt(), 0, 255);
+
+    if (server.hasArg("gmsg")) {
+        strncpy(cfg_->green_msg, server.arg("gmsg").c_str(), MSG_MAX_LEN - 1);
+        cfg_->green_msg[MSG_MAX_LEN - 1] = '\0';
+    }
+    if (server.hasArg("ymsg")) {
+        strncpy(cfg_->yellow_msg, server.arg("ymsg").c_str(), MSG_MAX_LEN - 1);
+        cfg_->yellow_msg[MSG_MAX_LEN - 1] = '\0';
+    }
+    if (server.hasArg("fmsg")) {
+        strncpy(cfg_->final_msg, server.arg("fmsg").c_str(), MSG_MAX_LEN - 1);
+        cfg_->final_msg[MSG_MAX_LEN - 1] = '\0';
+    }
+    if (server.hasArg("ssid")) {
+        strncpy(cfg_->wifi_ssid, server.arg("ssid").c_str(), SSID_MAX_LEN - 1);
+        cfg_->wifi_ssid[SSID_MAX_LEN - 1] = '\0';
+    }
+    if (server.hasArg("pass")) {
+        strncpy(cfg_->wifi_pass, server.arg("pass").c_str(), PASS_MAX_LEN - 1);
+        cfg_->wifi_pass[PASS_MAX_LEN - 1] = '\0';
+    }
 
     // Clamp
     if (cfg_->green_minutes  < 1) cfg_->green_minutes  = 1;
@@ -127,7 +220,6 @@ static void handle_save() {
     config_save(*cfg_);
 
     if (ap_mode_) {
-        // WiFi credentials were just configured via AP — reboot to connect
         String html;
         html.reserve(400);
         html += FPSTR(PAGE_HEAD);
@@ -144,63 +236,155 @@ static void handle_save() {
     config_changed_ = true;
     start_requested_ = true;
 
-    String html;
-    html.reserve(600);
-    html += FPSTR(PAGE_HEAD);
-    html += F("<div class='saved'>&#x2705; Gespeichert!<br><br>");
-    html += F("Timer startet...<br><br>");
-    html += F("<a href='/' style='color:#4361ee'>Zur&uuml;ck</a></div>");
-    html += F("<script>setTimeout(()=>location='/',3000)</script>");
-    html += F("</body></html>");
-    server.send(200, "text/html", html);
+    // Redirect back to main page — JS will pick up the running state
+    server.sendHeader("Location", "/");
+    server.send(303);
+}
+
+static void handle_pause() {
+    pause_requested_ = true;
+    server.send(200, "text/plain", "OK");
+}
+
+static void handle_resume() {
+    resume_requested_ = true;
+    server.send(200, "text/plain", "OK");
+}
+
+static void handle_stop() {
+    stop_requested_ = true;
+    server.send(200, "text/plain", "OK");
+}
+
+static void handle_lock() {
+    buttons_locked_ = !buttons_locked_;
+    server.send(200, "text/plain", buttons_locked_ ? "LOCKED" : "UNLOCKED");
+}
+
+static void handle_status() {
+    const TimerState& ts = timer_state();
+
+    const char* phase_str;
+    switch (ts.phase) {
+        case Phase::IDLE:   phase_str = "IDLE"; break;
+        case Phase::GREEN:  phase_str = "GREEN"; break;
+        case Phase::YELLOW: phase_str = "YELLOW"; break;
+        case Phase::FINAL:  phase_str = "FINAL"; break;
+        case Phase::DONE:   phase_str = "DONE"; break;
+        case Phase::PAUSED: phase_str = "PAUSED"; break;
+        default:            phase_str = "IDLE"; break;
+    }
+
+    const char* msg = phase_message(ts.phase, *cfg_);
+
+    int bat_level = M5.Power.getBatteryLevel();
+    bool bat_charging = M5.Power.isCharging();
+    int bat_voltage = M5.Power.getBatteryVoltage();
+    int32_t bat_current = M5.Power.getBatteryCurrent();  // mA, positive=charging
+    int16_t vbus_voltage = M5.Power.getVBUSVoltage();
+    uint8_t brightness = M5.Display.getBrightness();
+
+    String json;
+    json.reserve(256);
+    json += F("{\"phase\":\"");
+    json += phase_str;
+    json += F("\",\"remaining\":");
+    json += ts.remaining_seconds;
+    json += F(",\"total\":");
+    json += ts.total_seconds;
+    json += F(",\"locked\":");
+    json += buttons_locked_ ? F("true") : F("false");
+    json += F(",\"message\":\"");
+    json += msg;
+    json += F("\",\"battery\":");
+    json += bat_level;
+    json += F(",\"charging\":");
+    json += bat_charging ? F("true") : F("false");
+    json += F(",\"voltage\":");
+    json += bat_voltage;
+    json += F(",\"current_ma\":");
+    json += bat_current;
+    json += F(",\"vbus_mv\":");
+    json += vbus_voltage;
+    json += F(",\"brightness\":");
+    json += brightness;
+    json += F("}");
+
+    server.send(200, "application/json", json);
+}
+
+static void register_handlers() {
+    server.on("/", HTTP_GET, handle_root);
+    server.on("/save", HTTP_POST, handle_save);
+    server.on("/pause", HTTP_POST, handle_pause);
+    server.on("/resume", HTTP_POST, handle_resume);
+    server.on("/stop", HTTP_POST, handle_stop);
+    server.on("/lock", HTTP_POST, handle_lock);
+    server.on("/status", HTTP_GET, handle_status);
 }
 
 void webserver_start(TimerConfig& cfg) {
     cfg_ = &cfg;
 
     if (strlen(cfg.wifi_ssid) == 0) {
-        // No WiFi configured — start AP for initial setup
+        Serial.println("No WiFi configured, starting AP mode");
         WiFi.mode(WIFI_AP);
         WiFi.softAP("TimeTracker", "");
         IPAddress ip = WiFi.softAPIP();
         snprintf(ip_buf_, sizeof(ip_buf_), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        Serial.printf("AP IP: %s\n", ip_buf_);
 
         MDNS.begin("timetracker");
-        server.on("/", HTTP_GET, handle_root);
-        server.on("/save", HTTP_POST, handle_save);
+        Serial.println("mDNS started");
+
+        register_handlers();
         server.begin();
+        Serial.println("Web server started on port 80");
 
         ap_mode_ = true;
         connected_ = true;
-        Serial.printf("AP mode: connect to 'TimeTracker' WiFi, then http://%s/\n", ip_buf_);
+        Serial.printf("AP mode ready: connect to 'TimeTracker' WiFi, then http://%s/\n", ip_buf_);
         return;
     }
 
+    Serial.println("WiFi configured, starting STA mode");
     WiFi.mode(WIFI_STA);
     WiFi.begin(cfg.wifi_ssid, cfg.wifi_pass);
-
-    // Non-blocking: we check in webserver_loop()
 }
 
 void webserver_loop() {
-    if (cfg_ == nullptr || strlen(cfg_->wifi_ssid) == 0) return;
+    if (cfg_ == nullptr || strlen(cfg_->wifi_ssid) == 0) {
+        if (ap_mode_ && connected_) {
+            server.handleClient();
+        }
+        return;
+    }
 
     if (!connected_ && WiFi.status() == WL_CONNECTED) {
         connected_ = true;
         IPAddress ip = WiFi.localIP();
         snprintf(ip_buf_, sizeof(ip_buf_), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        Serial.printf("WiFi connected, IP: %s\n", ip_buf_);
 
+        WiFi.setSleep(true);  // modem sleep between beacons, saves ~20-40mA
         MDNS.begin("timetracker");
 
-        server.on("/", HTTP_GET, handle_root);
-        server.on("/save", HTTP_POST, handle_save);
+        register_handlers();
         server.begin();
 
         Serial.printf("Web server at http://%s/ (timetracker.local)\n", ip_buf_);
     }
 
     if (connected_) {
+        // Detect WiFi disconnect and reconnect
+        if (WiFi.status() != WL_CONNECTED) {
+            connected_ = false;
+            Serial.println("WiFi disconnected, reconnecting...");
+            WiFi.reconnect();
+            return;
+        }
         server.handleClient();
+        yield();
     }
 }
 
@@ -222,6 +406,28 @@ bool webserver_start_requested() {
     bool v = start_requested_;
     start_requested_ = false;
     return v;
+}
+
+bool webserver_pause_requested() {
+    bool v = pause_requested_;
+    pause_requested_ = false;
+    return v;
+}
+
+bool webserver_resume_requested() {
+    bool v = resume_requested_;
+    resume_requested_ = false;
+    return v;
+}
+
+bool webserver_stop_requested() {
+    bool v = stop_requested_;
+    stop_requested_ = false;
+    return v;
+}
+
+bool webserver_buttons_locked() {
+    return buttons_locked_;
 }
 
 bool webserver_ap_mode() {

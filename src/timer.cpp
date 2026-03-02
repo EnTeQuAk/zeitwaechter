@@ -42,7 +42,7 @@ static Phase phase_for_elapsed(uint32_t elapsed) {
 }
 
 bool timer_tick() {
-    if (state_.phase == Phase::IDLE || state_.phase == Phase::DONE) {
+    if (state_.phase == Phase::IDLE || state_.phase == Phase::DONE || state_.phase == Phase::PAUSED) {
         return false;
     }
 
@@ -63,10 +63,7 @@ bool timer_tick() {
     }
 
     uint32_t elapsed = state_.total_seconds - state_.remaining_seconds;
-    Phase new_phase = phase_for_elapsed(elapsed);
-    bool phase_changed = (new_phase != state_.phase);
-
-    state_.phase = new_phase;
+    state_.phase = phase_for_elapsed(elapsed);
 
     // Compute phase-local remaining
     switch (state_.phase) {
@@ -86,9 +83,21 @@ bool timer_tick() {
             break;
     }
 
-    // Return true if second changed (always) or phase changed
-    (void)phase_changed;
     return true;
+}
+
+void timer_pause() {
+    if (state_.phase != Phase::IDLE && state_.phase != Phase::DONE && state_.phase != Phase::PAUSED) {
+        state_.paused_from = state_.phase;
+        state_.phase = Phase::PAUSED;
+    }
+}
+
+void timer_resume() {
+    if (state_.phase == Phase::PAUSED) {
+        state_.phase = state_.paused_from;
+        last_tick_ms_ = millis();  // reset tick timer to avoid jump
+    }
 }
 
 void timer_stop() {
@@ -106,6 +115,7 @@ uint16_t phase_color(Phase phase) {
         case Phase::YELLOW: return COL_YELLOW;
         case Phase::FINAL:  return COL_FINAL;
         case Phase::DONE:   return COL_FINAL;
+        case Phase::PAUSED: return COL_YELLOW;  // Yellow for paused
         default:            return COL_DIM_TEXT;
     }
 }
@@ -116,6 +126,7 @@ const char* phase_message(Phase phase, const TimerConfig& cfg) {
         case Phase::YELLOW: return cfg.yellow_msg;
         case Phase::FINAL:  return cfg.final_msg;
         case Phase::DONE:   return cfg.final_msg;
+        case Phase::PAUSED: return "PAUSE";
         default:            return "";
     }
 }

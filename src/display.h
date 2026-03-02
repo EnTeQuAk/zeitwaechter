@@ -1,6 +1,6 @@
 #pragma once
 
-#include "M5Dial.h"
+#include <M5Unified.h>
 #include "config.h"
 #include "timer.h"
 
@@ -21,3 +21,6 @@ void display_wifi_status(const char* ssid, bool connected, const char* ip);
 
 // Show AP setup screen (first boot, no WiFi configured)
 void display_ap_setup(const char* ip);
+
+// Check and update battery indicator if state changed
+void check_battery_update();
