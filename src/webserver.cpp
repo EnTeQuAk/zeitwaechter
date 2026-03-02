@@ -444,10 +444,14 @@ void webserver_start(TimerConfig& cfg) {
 }
 
 void webserver_loop() {
-    if (cfg_ == nullptr || strlen(cfg_->wifi_ssid) == 0) {
-        if (ap_mode_ && connected_) {
+    if (ap_mode_) {
+        if (connected_) {
             server.handleClient();
         }
+        return;
+    }
+
+    if (cfg_ == nullptr || strlen(cfg_->wifi_ssid) == 0) {
         return;
     }
 
