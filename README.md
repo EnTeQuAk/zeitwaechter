@@ -1,19 +1,21 @@
 <p align="center">
   <!-- TODO: add logo -->
   <h1 align="center">Zeitwächter</h1>
-  <p align="center">A 3-phase countdown timer for kids. Green → yellow → magenta.<br>Parents configure via phone, kids just watch the colors.</p>
+  <p align="center">A 3-phase visual timer for kids on M5Stack.<br>Green → yellow → magenta. No clock reading required.</p>
 </p>
 
 ## What's this?
 
-Zeitwächter is a visual countdown timer for morning routines, homework
-sessions, or any situation where a child needs to understand "how much
-time is left" without reading a clock.
+Zeitwächter helps kids understand time without being able to read a
+clock. Three color phases (green, yellow, magenta) turn an abstract
+countdown into something a child can feel. Green means plenty of time,
+yellow means start wrapping up, magenta means it's almost over.
 
-Three color phases (green → yellow → magenta) give an intuitive signal:
-everything's fine → wrap it up → time's up. Parents configure durations
-and messages via a web UI on their phone. The device is child-proof
-during operation.
+Use it for morning routines (chill, get dressed and brush teeth, jacket
+on and head to school), homework blocks, or "how long till dinner" so
+your kid can plan their playing. Parents set durations and messages per
+phase via a web UI on their phone. The device is child-proof during
+operation.
 
 Inspired by the [AURIOL Time Tracker](https://www.lidl.de/) concept,
 built on M5Stack hardware.
@@ -25,10 +27,10 @@ speaker, touch buttons). M5Dial support planned.
 
 ## Features
 
-- **3-phase countdown**: configurable durations per phase (1–120 minutes each)
+- **3-phase countdown**: configurable durations per phase (1-120 minutes each)
 - **Color-coded display**: green/yellow/magenta with phase-specific messages
 - **3-phase progress bar**: shows all phases proportionally, dims elapsed time
-- **Web UI** at `http://timetracker.local` — configure phases, messages, volume
+- **Web UI** at `http://timetracker.local`, configure phases, messages, volume
 - **Live remote control**: pause, resume, stop, lock buttons from phone
 - **Child-proof**: physical buttons locked via web UI, BtnB acknowledges alarm
 - **Auto-dim**: screen dims after 30s idle, wakes on interaction or phase change
@@ -97,8 +99,8 @@ While the timer runs, the web UI switches to a control panel:
 
 | Button | Idle | Running | Done |
 |--------|------|---------|------|
-| **A** (left) | Start timer | Show remaining | — |
-| **B** (middle) | — | Show remaining | Acknowledge |
+| **A** (left) | Start timer | Show remaining | |
+| **B** (middle) | | Show remaining | Acknowledge |
 | **C** (right, long) | Reset | Reset | Reset |
 
 All buttons can be locked via the web UI for full child-proofing.
@@ -114,20 +116,18 @@ src/
 └── webserver.h/cpp # WiFi, mDNS, web UI (config + live control), REST API
 ```
 
-- **Timer**: Phase state machine (IDLE → GREEN → YELLOW → FINAL → DONE / PAUSED)
+- **Timer**: Phase state machine (IDLE, GREEN, YELLOW, FINAL, DONE, PAUSED)
 - **Display**: Partial redraws, only full screen clear on phase change
 - **Web**: HTML served from PROGMEM, JS polls `/status` for live updates
 - **Config**: Preferences library (NVS flash), validated on load
 
 ## Power Management
 
-| Optimization | Savings |
-|-------------|---------|
-| CPU 80MHz (down from 240) | ~30-40mA |
-| WiFi modem sleep | ~20-40mA |
-| Bluetooth disabled | ~10-15mA |
-| Auto-dim after 30s idle | ~15-25mA |
-| Battery reads throttled to 2s | Reduced I2C bus load |
+- CPU downclocked to 80MHz (plenty for a timer and webserver)
+- WiFi modem sleep between beacons
+- Bluetooth radio disabled
+- Display auto-dims after 30s idle, wakes on interaction or phase change
+- Battery reads throttled to once per minute
 
 ## API
 

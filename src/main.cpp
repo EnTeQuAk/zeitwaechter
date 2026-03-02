@@ -283,7 +283,7 @@ void loop() {
 
     // -- Battery indicator update (throttled, I2C read is expensive) --
     static uint32_t last_bat_check_ms = 0;
-    if (millis() - last_bat_check_ms > 2000) {
+    if (millis() - last_bat_check_ms > 60000) {
         check_battery_update();
         last_bat_check_ms = millis();
     }
