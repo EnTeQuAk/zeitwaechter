@@ -7,6 +7,7 @@
 <p align="center">
   <a href="docs/screenshots/display-running.png"><img src="docs/screenshots/display-running.png" width="160"></a>
   <a href="docs/screenshots/display-yellow.png"><img src="docs/screenshots/display-yellow.png" width="160"></a>
+  <a href="docs/screenshots/display-final.png"><img src="docs/screenshots/display-final.png" width="160"></a>
   <a href="docs/screenshots/web-controls.png"><img src="docs/screenshots/web-controls.png" width="120"></a>
   <a href="docs/screenshots/web-config.png"><img src="docs/screenshots/web-config.png" width="120"></a>
 </p>
