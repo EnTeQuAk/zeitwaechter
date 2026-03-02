@@ -4,6 +4,12 @@
   <p align="center">A 3-phase visual timer for kids on M5Stack.<br>Green → yellow → magenta. No clock reading required.</p>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/display-running.png" width="320" alt="Display showing green phase countdown with star progress marker">
+  <img src="docs/screenshots/web-controls.png" width="240" alt="Web UI control panel with pause and lock buttons">
+  <img src="docs/screenshots/web-config.png" width="240" alt="Web UI settings with phase durations and messages">
+</p>
+
 ## What's this?
 
 Zeitwächter helps kids understand time without being able to read a
