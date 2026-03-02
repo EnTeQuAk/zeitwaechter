@@ -175,8 +175,10 @@ static void handle_root() {
 
     // Submit
     html += F("<form id='f' method='POST' action='/save'>");
-    html += F("<button type='submit' class='btn' style='background:#4361ee'>Speichern &amp; Timer "
-              "starten</button>");
+    html += F("<button type='submit' class='btn' style='background:#4361ee'>"
+              "&#128190; Speichern</button>");
+    html += F("<button type='submit' name='start' value='1' class='btn' "
+              "style='background:#10b981'>&#9654; Speichern &amp; Starten</button>");
     html += F("</form>");
     html += F("</div>"); // #cfg
 
@@ -242,9 +244,10 @@ static void handle_save() {
     }
 
     config_changed_ = true;
-    start_requested_ = true;
+    if (server.hasArg("start"))
+        start_requested_ = true;
 
-    // Redirect back to main page, JS picks up the running state
+    // Redirect back to main page
     server.sendHeader("Location", "/");
     server.send(303);
 }
