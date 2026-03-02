@@ -33,5 +33,8 @@ bool webserver_stop_requested();
 // Current button lock state (controlled by web UI)
 bool webserver_buttons_locked();
 
-// True if running in AP mode (no WiFi configured)
+// True if running in AP mode (no WiFi configured or connection timed out)
 bool webserver_ap_mode();
+
+// True if AP fallback just happened (cleared after reading)
+bool webserver_ap_fallback();

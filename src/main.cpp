@@ -150,6 +150,12 @@ void loop() {
         needs_redraw = true;
     }
 
+    // -- AP fallback (WiFi timed out) --
+    if (webserver_ap_fallback()) {
+        needs_redraw = true;
+        wake_display();
+    }
+
     // -- Web UI triggers --
     if (webserver_config_changed()) {
         config_load(cfg);

@@ -13,6 +13,7 @@ static WebServer server(80);
 static TimerConfig* cfg_ = nullptr;
 static bool connected_ = false;
 static bool ap_mode_ = false;
+static bool ap_fallback_ = false;
 static uint32_t wifi_start_ms_ = 0;
 static char ip_buf_[16] = "";
 static bool config_changed_ = false;
@@ -465,6 +466,7 @@ void webserver_loop() {
         server.begin();
 
         ap_mode_ = true;
+        ap_fallback_ = true;
         connected_ = true;
         return;
     }
@@ -541,4 +543,10 @@ bool webserver_buttons_locked() {
 
 bool webserver_ap_mode() {
     return ap_mode_;
+}
+
+bool webserver_ap_fallback() {
+    bool v = ap_fallback_;
+    ap_fallback_ = false;
+    return v;
 }
