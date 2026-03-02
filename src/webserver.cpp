@@ -325,7 +325,9 @@ static void handle_screenshot() {
         M5.Display.readRect(0, y, w, 1, rgb565);
 
         for (int16_t x = 0; x < w; x++) {
-            uint16_t px = rgb565[x];
+            // readRect returns big-endian RGB565, swap for LE extraction
+            uint16_t raw = rgb565[x];
+            uint16_t px = (raw >> 8) | (raw << 8);
             uint8_t r5 = (px >> 11) & 0x1F;
             uint8_t g6 = (px >> 5) & 0x3F;
             uint8_t b5 = px & 0x1F;
