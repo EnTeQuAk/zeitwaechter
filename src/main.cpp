@@ -5,15 +5,15 @@
 #include "display.h"
 #include "webserver.h"
 
-static constexpr uint32_t LONG_PRESS_MS       = 1500;
-static constexpr uint32_t MSG_DISPLAY_MS       = 2000;
-static constexpr uint32_t BEEP_PAUSE_MS        = 120;
-static constexpr uint32_t DONE_BEEP_INTERVAL   = 3000;
-static constexpr uint8_t  PHASE_CHANGE_BEEPS   = 3;
-static constexpr uint8_t  DONE_BEEPS           = 5;
-static constexpr uint8_t  BRIGHT_ACTIVE        = 80;
-static constexpr uint8_t  BRIGHT_DIM           = 15;
-static constexpr uint32_t DIM_AFTER_MS         = 30000;  // 30s
+static constexpr uint32_t LONG_PRESS_MS = 1500;
+static constexpr uint32_t MSG_DISPLAY_MS = 2000;
+static constexpr uint32_t BEEP_PAUSE_MS = 120;
+static constexpr uint32_t DONE_BEEP_INTERVAL = 3000;
+static constexpr uint8_t PHASE_CHANGE_BEEPS = 3;
+static constexpr uint8_t DONE_BEEPS = 5;
+static constexpr uint8_t BRIGHT_ACTIVE = 80;
+static constexpr uint8_t BRIGHT_DIM = 15;
+static constexpr uint32_t DIM_AFTER_MS = 30000; // 30s
 
 static TimerConfig cfg;
 static bool needs_redraw = true;
@@ -27,7 +27,7 @@ static bool showing_message = false;
 static uint32_t message_end_ms = 0;
 
 // Buzzer queue
-static uint8_t  beep_remaining = 0;
+static uint8_t beep_remaining = 0;
 static uint32_t beep_next_ms = 0;
 
 // Done state re-beep
@@ -58,8 +58,10 @@ static void queue_beeps(uint8_t count) {
 }
 
 static void process_beeps() {
-    if (beep_remaining == 0) return;
-    if (millis() < beep_next_ms) return;
+    if (beep_remaining == 0)
+        return;
+    if (millis() < beep_next_ms)
+        return;
 
     if (beep_remaining % 2 == 0) {
         M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION_MS);
@@ -71,29 +73,29 @@ static void process_beeps() {
 }
 
 void setup() {
-    setCpuFrequencyMhz(80);  // 80MHz is plenty for timer + webserver
-    btStop();                 // disable Bluetooth radio, saves ~10-15mA
+    setCpuFrequencyMhz(80); // 80MHz is plenty for timer + webserver
+    btStop();               // disable Bluetooth radio, saves ~10-15mA
     Serial.begin(115200);
     delay(100);
     Serial.println("\n\n=== Kids Time Tracker starting ===");
-    
+
     M5.begin();
     Serial.println("M5.begin() done");
-    
+
     M5.Display.setBrightness(BRIGHT_ACTIVE);
-    M5.Display.setRotation(1);  // 90° rotation = portrait mode
-    
+    M5.Display.setRotation(1); // 90° rotation = portrait mode
+
     // Derive display geometry from actual screen dimensions
     setup_display_geometry();
     Serial.printf("Display: %dx%d, center: %d,%d\n", g_screen_w, g_screen_h, g_cx, g_cy);
-    
+
     M5.Display.fillScreen(COL_BG);
     Serial.println("Display init done");
 
     config_load(cfg);
     M5.Speaker.setVolume(cfg.volume);
     Serial.printf("Config loaded, volume: %u\n", cfg.volume);
-    
+
     timer_init();
     Serial.println("Timer init done");
 
@@ -223,7 +225,8 @@ void loop() {
                 last_phase = Phase::GREEN;
                 needs_redraw = true;
                 queue_beeps(1);
-            } else if (ts.phase == Phase::GREEN || ts.phase == Phase::YELLOW || ts.phase == Phase::FINAL) {
+            } else if (ts.phase == Phase::GREEN || ts.phase == Phase::YELLOW ||
+                       ts.phase == Phase::FINAL) {
                 const char* msg = phase_message(ts.phase, cfg);
                 display_remaining_message(ts.remaining_seconds, msg);
                 showing_message = true;
@@ -241,7 +244,8 @@ void loop() {
                 needs_redraw = true;
                 beep_remaining = 0;
                 queue_beeps(1);
-            } else if (ts.phase == Phase::GREEN || ts.phase == Phase::YELLOW || ts.phase == Phase::FINAL) {
+            } else if (ts.phase == Phase::GREEN || ts.phase == Phase::YELLOW ||
+                       ts.phase == Phase::FINAL) {
                 const char* msg = phase_message(ts.phase, cfg);
                 display_remaining_message(ts.remaining_seconds, msg);
                 showing_message = true;
@@ -301,12 +305,8 @@ void loop() {
             case Phase::GREEN:
             case Phase::YELLOW:
             case Phase::FINAL:
-            case Phase::PAUSED:
-                display_running(ts, cfg);
-                break;
-            case Phase::DONE:
-                display_done(cfg);
-                break;
+            case Phase::PAUSED: display_running(ts, cfg); break;
+            case Phase::DONE: display_done(cfg); break;
         }
         needs_redraw = false;
     }

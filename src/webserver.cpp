@@ -175,9 +175,10 @@ static void handle_root() {
 
     // Submit
     html += F("<form id='f' method='POST' action='/save'>");
-    html += F("<button type='submit' class='btn' style='background:#4361ee'>Speichern &amp; Timer starten</button>");
+    html += F("<button type='submit' class='btn' style='background:#4361ee'>Speichern &amp; Timer "
+              "starten</button>");
     html += F("</form>");
-    html += F("</div>");  // #cfg
+    html += F("</div>"); // #cfg
 
     html += FPSTR(PAGE_SCRIPT);
     html += F("</body></html>");
@@ -186,10 +187,14 @@ static void handle_root() {
 }
 
 static void handle_save() {
-    if (server.hasArg("gm"))   cfg_->green_minutes  = server.arg("gm").toInt();
-    if (server.hasArg("ym"))   cfg_->yellow_minutes = server.arg("ym").toInt();
-    if (server.hasArg("fm"))   cfg_->final_minutes  = server.arg("fm").toInt();
-    if (server.hasArg("vol"))  cfg_->volume = constrain(server.arg("vol").toInt(), 0, 255);
+    if (server.hasArg("gm"))
+        cfg_->green_minutes = server.arg("gm").toInt();
+    if (server.hasArg("ym"))
+        cfg_->yellow_minutes = server.arg("ym").toInt();
+    if (server.hasArg("fm"))
+        cfg_->final_minutes = server.arg("fm").toInt();
+    if (server.hasArg("vol"))
+        cfg_->volume = constrain(server.arg("vol").toInt(), 0, 255);
 
     if (server.hasArg("gmsg")) {
         strncpy(cfg_->green_msg, server.arg("gmsg").c_str(), MSG_MAX_LEN - 1);
@@ -213,9 +218,12 @@ static void handle_save() {
     }
 
     // Clamp
-    if (cfg_->green_minutes  < 1) cfg_->green_minutes  = 1;
-    if (cfg_->yellow_minutes < 1) cfg_->yellow_minutes = 1;
-    if (cfg_->final_minutes  < 1) cfg_->final_minutes  = 1;
+    if (cfg_->green_minutes < 1)
+        cfg_->green_minutes = 1;
+    if (cfg_->yellow_minutes < 1)
+        cfg_->yellow_minutes = 1;
+    if (cfg_->final_minutes < 1)
+        cfg_->final_minutes = 1;
 
     config_save(*cfg_);
 
@@ -236,7 +244,7 @@ static void handle_save() {
     config_changed_ = true;
     start_requested_ = true;
 
-    // Redirect back to main page — JS will pick up the running state
+    // Redirect back to main page, JS picks up the running state
     server.sendHeader("Location", "/");
     server.send(303);
 }
@@ -280,20 +288,21 @@ static void handle_screenshot() {
     int16_t h = M5.Display.height();
 
     uint32_t row_size = static_cast<uint32_t>(w) * 3;
-    uint32_t row_stride = (row_size + 3) & ~3u;  // pad to 4-byte boundary
+    uint32_t row_stride = (row_size + 3) & ~3u; // pad to 4-byte boundary
     uint32_t img_size = row_stride * h;
     uint32_t file_size = 54 + img_size;
 
     // BMP file header (14 bytes) + DIB header (40 bytes)
     uint8_t hdr[54] = {};
-    hdr[0] = 'B'; hdr[1] = 'M';
+    hdr[0] = 'B';
+    hdr[1] = 'M';
     write_le32(&hdr[2], file_size);
-    write_le32(&hdr[10], 54);       // pixel data offset
-    write_le32(&hdr[14], 40);       // DIB header size
+    write_le32(&hdr[10], 54); // pixel data offset
+    write_le32(&hdr[14], 40); // DIB header size
     write_le32(&hdr[18], static_cast<uint32_t>(w));
     write_le32(&hdr[22], static_cast<uint32_t>(h));
-    write_le16(&hdr[26], 1);        // color planes
-    write_le16(&hdr[28], 24);       // bits per pixel
+    write_le16(&hdr[26], 1);  // color planes
+    write_le16(&hdr[28], 24); // bits per pixel
     write_le32(&hdr[34], img_size);
 
     auto* rgb565 = static_cast<uint16_t*>(malloc(w * sizeof(uint16_t)));
@@ -337,13 +346,13 @@ static void handle_status() {
 
     const char* phase_str;
     switch (ts.phase) {
-        case Phase::IDLE:   phase_str = "IDLE"; break;
-        case Phase::GREEN:  phase_str = "GREEN"; break;
+        case Phase::IDLE: phase_str = "IDLE"; break;
+        case Phase::GREEN: phase_str = "GREEN"; break;
         case Phase::YELLOW: phase_str = "YELLOW"; break;
-        case Phase::FINAL:  phase_str = "FINAL"; break;
-        case Phase::DONE:   phase_str = "DONE"; break;
+        case Phase::FINAL: phase_str = "FINAL"; break;
+        case Phase::DONE: phase_str = "DONE"; break;
         case Phase::PAUSED: phase_str = "PAUSED"; break;
-        default:            phase_str = "IDLE"; break;
+        default: phase_str = "IDLE"; break;
     }
 
     const char* msg = phase_message(ts.phase, *cfg_);
@@ -351,7 +360,7 @@ static void handle_status() {
     int bat_level = M5.Power.getBatteryLevel();
     bool bat_charging = M5.Power.isCharging();
     int bat_voltage = M5.Power.getBatteryVoltage();
-    int32_t bat_current = M5.Power.getBatteryCurrent();  // mA, positive=charging
+    int32_t bat_current = M5.Power.getBatteryCurrent(); // mA, positive=charging
     int16_t vbus_voltage = M5.Power.getVBUSVoltage();
     uint8_t brightness = M5.Display.getBrightness();
 
@@ -438,7 +447,7 @@ void webserver_loop() {
         snprintf(ip_buf_, sizeof(ip_buf_), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
         Serial.printf("WiFi connected, IP: %s\n", ip_buf_);
 
-        WiFi.setSleep(true);  // modem sleep between beacons, saves ~20-40mA
+        WiFi.setSleep(true); // modem sleep between beacons, saves ~20-40mA
         MDNS.begin("timetracker");
 
         register_handlers();

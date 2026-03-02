@@ -3,7 +3,7 @@
 #include "config.h"
 
 // Connect to WiFi and start mDNS + HTTP server.
-// Non-blocking — call webserver_loop() in loop().
+// Non-blocking. Call webserver_loop() in loop().
 void webserver_start(TimerConfig& cfg);
 
 // Handle incoming HTTP requests. Call every loop iteration.

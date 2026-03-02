@@ -17,7 +17,7 @@ static uint16_t dim_color(uint16_t c) {
 
 // Bar layout constants
 static constexpr int16_t BAR_H = 22;
-static constexpr int16_t BAR_BOTTOM_MARGIN = 28;  // space for hint text below
+static constexpr int16_t BAR_BOTTOM_MARGIN = 28; // space for hint text below
 
 // Draw a 3-phase progress bar. Elapsed portions are dimmed, remaining are bright.
 static void draw_phase_bar(const TimerState& ts, const TimerConfig& cfg) {
@@ -29,39 +29,47 @@ static void draw_phase_bar(const TimerState& ts, const TimerConfig& cfg) {
     uint32_t y_sec = static_cast<uint32_t>(cfg.yellow_minutes) * 60;
     uint32_t f_sec = static_cast<uint32_t>(cfg.final_minutes) * 60;
     uint32_t total = g_sec + y_sec + f_sec;
-    if (total == 0) return;
+    if (total == 0)
+        return;
 
     // Phase widths in pixels (proportional to duration)
     int16_t gw = static_cast<int16_t>(static_cast<int32_t>(bar_w) * g_sec / total);
     int16_t yw = static_cast<int16_t>(static_cast<int32_t>(bar_w) * y_sec / total);
-    int16_t fw = bar_w - gw - yw;  // remainder to avoid rounding gaps
+    int16_t fw = bar_w - gw - yw; // remainder to avoid rounding gaps
 
     // Elapsed seconds
     uint32_t elapsed = ts.total_seconds - ts.remaining_seconds;
 
     // Draw each phase segment
-    struct Seg { int16_t w; uint16_t col; uint32_t start; uint32_t dur; };
+    struct Seg {
+        int16_t w;
+        uint16_t col;
+        uint32_t start;
+        uint32_t dur;
+    };
     Seg segs[3] = {
-        { gw, COL_GREEN,  0,     g_sec },
-        { yw, COL_YELLOW, g_sec, y_sec },
-        { fw, COL_FINAL,  g_sec + y_sec, f_sec },
+        {gw, COL_GREEN, 0, g_sec},
+        {yw, COL_YELLOW, g_sec, y_sec},
+        {fw, COL_FINAL, g_sec + y_sec, f_sec},
     };
 
     int16_t cx = x;
     for (int i = 0; i < 3; i++) {
-        if (segs[i].w <= 0) continue;
+        if (segs[i].w <= 0)
+            continue;
 
         uint32_t seg_end = segs[i].start + segs[i].dur;
 
         if (elapsed >= seg_end) {
-            // Entire segment elapsed — dim
+            // Entire segment elapsed, dim
             M5.Display.fillRect(cx, y, segs[i].w, BAR_H, dim_color(segs[i].col));
         } else if (elapsed <= segs[i].start) {
-            // Entire segment in the future — bright
+            // Entire segment in the future, bright
             M5.Display.fillRect(cx, y, segs[i].w, BAR_H, segs[i].col);
         } else {
-            // Partially elapsed — split bright/dim
-            float seg_frac = static_cast<float>(elapsed - segs[i].start) / static_cast<float>(segs[i].dur);
+            // Partially elapsed, split bright/dim
+            float seg_frac =
+                static_cast<float>(elapsed - segs[i].start) / static_cast<float>(segs[i].dur);
             int16_t dim_w = static_cast<int16_t>(segs[i].w * seg_frac);
             if (dim_w > 0) {
                 M5.Display.fillRect(cx, y, dim_w, BAR_H, dim_color(segs[i].col));
@@ -82,8 +90,8 @@ static void draw_phase_bar(const TimerState& ts, const TimerConfig& cfg) {
 
 // Draw text centered, auto-wrapping at word boundaries if too wide.
 // Falls back to shrink-to-fit if even a single word is wider than max_w.
-static void draw_text_fitted(const char* text, const lgfx::IFont* font, float base_size,
-                              int16_t x, int16_t y, uint16_t color, int16_t max_w) {
+static void draw_text_fitted(const char* text, const lgfx::IFont* font, float base_size, int16_t x,
+                             int16_t y, uint16_t color, int16_t max_w) {
     M5.Display.setTextColor(color, COL_BG);
     M5.Display.setTextDatum(middle_center);
     M5.Display.setFont(font);
@@ -101,8 +109,14 @@ static void draw_text_fitted(const char* text, const lgfx::IFont* font, float ba
     int best_split = -1;
     int mid = len / 2;
     for (int d = 0; d < mid; d++) {
-        if (text[mid + d] == ' ') { best_split = mid + d; break; }
-        if (text[mid - d] == ' ') { best_split = mid - d; break; }
+        if (text[mid + d] == ' ') {
+            best_split = mid + d;
+            break;
+        }
+        if (text[mid - d] == ' ') {
+            best_split = mid - d;
+            break;
+        }
     }
 
     if (best_split > 0) {
@@ -128,13 +142,15 @@ static void draw_text_fitted(const char* text, const lgfx::IFont* font, float ba
         return;
     }
 
-    // No space found — single long word, just shrink to fit
-    float sz = base_size * static_cast<float>(max_w) / static_cast<float>(M5.Display.textWidth(text));
+    // No space found. Single long word, just shrink to fit.
+    float sz =
+        base_size * static_cast<float>(max_w) / static_cast<float>(M5.Display.textWidth(text));
     M5.Display.setTextSize(sz);
     M5.Display.drawString(text, x, y);
 }
 
-static void draw_text_large(const char* text, int16_t x, int16_t y, uint16_t color, float size = 1.0f) {
+static void draw_text_large(const char* text, int16_t x, int16_t y, uint16_t color,
+                            float size = 1.0f) {
     draw_text_fitted(text, &fonts::DejaVu40, size, x, y, color, g_screen_w - g_margin * 2);
 }
 
@@ -146,27 +162,31 @@ static void draw_text_small(const char* text, int16_t x, int16_t y, uint16_t col
     draw_text_fitted(text, &fonts::DejaVu12, 1.0f, x, y, color, g_screen_w - g_margin * 2);
 }
 
-// Battery icon dimensions (shared between draw and clear)
+// Battery icon dimensions
 static constexpr int16_t BAT_W = 25;
 static constexpr int16_t BAT_H = 12;
 static constexpr int16_t BAT_TIP_W = 3;
 
-static int16_t bat_x() { return g_screen_w - g_margin - BAT_W - BAT_TIP_W; }
-static int16_t bat_y() { return g_margin; }
+static int16_t bat_x() {
+    return g_screen_w - g_margin - BAT_W - BAT_TIP_W;
+}
+static int16_t bat_y() {
+    return g_margin;
+}
 
 static void draw_battery_indicator() {
     int level = constrain(M5.Power.getBatteryLevel(), -1, 100);
     bool charging = M5.Power.isCharging();
-    
+
     int16_t x = bat_x();
     int16_t y = bat_y();
-    
+
     // Battery outline
     uint16_t outline_col = (level > 20) ? COL_DIM_TEXT : COL_RED;
     M5.Display.drawRect(x, y, BAT_W, BAT_H, outline_col);
     // Battery tip
     M5.Display.fillRect(x + BAT_W, y + 3, BAT_TIP_W, BAT_H - 6, outline_col);
-    
+
     // Clear interior first so old fill doesn't persist
     M5.Display.fillRect(x + 2, y + 2, BAT_W - 4, BAT_H - 4, COL_BG);
 
@@ -177,7 +197,7 @@ static void draw_battery_indicator() {
             M5.Display.fillRect(x + 2, y + 2, fill_w, BAT_H - 4, fill_col);
         }
     }
-    
+
     // Charging indicator
     if (charging) {
         M5.Display.setTextColor(COL_TEXT, COL_BG);
@@ -191,7 +211,7 @@ static void draw_battery_indicator() {
 void check_battery_update() {
     int level = constrain(M5.Power.getBatteryLevel(), -1, 100);
     bool charging = M5.Power.isCharging();
-    
+
     if (level != last_battery_level || charging != last_charging_state) {
         draw_battery_indicator();
         last_battery_level = level;
@@ -228,8 +248,8 @@ void display_idle(const TimerConfig& cfg) {
 
     // Phase breakdown
     char phases[48];
-    snprintf(phases, sizeof(phases), "%u + %u + %u",
-             cfg.green_minutes, cfg.yellow_minutes, cfg.final_minutes);
+    snprintf(phases, sizeof(phases), "%u + %u + %u", cfg.green_minutes, cfg.yellow_minutes,
+             cfg.final_minutes);
     draw_text_medium(phases, g_cx, g_cy + 35, COL_DIM_TEXT);
 
     // Hint for buttons
@@ -261,7 +281,7 @@ void display_running(const TimerState& ts, const TimerConfig& cfg) {
 
         uint16_t col = phase_color(ts.phase);
 
-        // Phase message at top (with more top margin)
+        // Phase message
         const char* msg = phase_message(ts.phase, cfg);
         draw_text_medium(msg, g_cx, g_margin + 20, col);
 
@@ -277,8 +297,8 @@ void display_running(const TimerState& ts, const TimerConfig& cfg) {
         draw_text_large(buf, g_cx, g_cy - 10, col);
         draw_phase_bar(ts, cfg);
     }
-    
-    // Always check battery state and update if needed
+
+    // Check battery, update if changed
     check_battery_update();
 
     M5.Display.endWrite();
@@ -301,7 +321,7 @@ void display_done(const TimerConfig& cfg) {
 
         draw_text_small("B=OK  C=Reset", g_cx, g_screen_h - g_margin - 5, COL_DIM_TEXT);
     }
-    
+
     // Check battery state and update if needed
     check_battery_update();
 

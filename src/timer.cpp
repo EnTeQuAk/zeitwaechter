@@ -36,13 +36,16 @@ void timer_start(const TimerConfig& cfg) {
 
 // Determine which phase we're in based on elapsed time
 static Phase phase_for_elapsed(uint32_t elapsed) {
-    if (elapsed < green_end_) return Phase::GREEN;
-    if (elapsed < yellow_end_) return Phase::YELLOW;
+    if (elapsed < green_end_)
+        return Phase::GREEN;
+    if (elapsed < yellow_end_)
+        return Phase::YELLOW;
     return Phase::FINAL;
 }
 
 bool timer_tick() {
-    if (state_.phase == Phase::IDLE || state_.phase == Phase::DONE || state_.phase == Phase::PAUSED) {
+    if (state_.phase == Phase::IDLE || state_.phase == Phase::DONE ||
+        state_.phase == Phase::PAUSED) {
         return false;
     }
 
@@ -79,15 +82,15 @@ bool timer_tick() {
             state_.phase_total = state_.total_seconds - yellow_end_;
             state_.phase_remaining = state_.total_seconds - elapsed;
             break;
-        default:
-            break;
+        default: break;
     }
 
     return true;
 }
 
 void timer_pause() {
-    if (state_.phase != Phase::IDLE && state_.phase != Phase::DONE && state_.phase != Phase::PAUSED) {
+    if (state_.phase != Phase::IDLE && state_.phase != Phase::DONE &&
+        state_.phase != Phase::PAUSED) {
         state_.paused_from = state_.phase;
         state_.phase = Phase::PAUSED;
     }
@@ -96,7 +99,7 @@ void timer_pause() {
 void timer_resume() {
     if (state_.phase == Phase::PAUSED) {
         state_.phase = state_.paused_from;
-        last_tick_ms_ = millis();  // reset tick timer to avoid jump
+        last_tick_ms_ = millis(); // reset tick timer to avoid jump
     }
 }
 
@@ -111,22 +114,22 @@ const TimerState& timer_state() {
 
 uint16_t phase_color(Phase phase) {
     switch (phase) {
-        case Phase::GREEN:  return COL_GREEN;
+        case Phase::GREEN: return COL_GREEN;
         case Phase::YELLOW: return COL_YELLOW;
-        case Phase::FINAL:  return COL_FINAL;
-        case Phase::DONE:   return COL_FINAL;
-        case Phase::PAUSED: return COL_YELLOW;  // Yellow for paused
-        default:            return COL_DIM_TEXT;
+        case Phase::FINAL: return COL_FINAL;
+        case Phase::DONE: return COL_FINAL;
+        case Phase::PAUSED: return COL_YELLOW; // Yellow for paused
+        default: return COL_DIM_TEXT;
     }
 }
 
 const char* phase_message(Phase phase, const TimerConfig& cfg) {
     switch (phase) {
-        case Phase::GREEN:  return cfg.green_msg;
+        case Phase::GREEN: return cfg.green_msg;
         case Phase::YELLOW: return cfg.yellow_msg;
-        case Phase::FINAL:  return cfg.final_msg;
-        case Phase::DONE:   return cfg.final_msg;
+        case Phase::FINAL: return cfg.final_msg;
+        case Phase::DONE: return cfg.final_msg;
         case Phase::PAUSED: return "PAUSE";
-        default:            return "";
+        default: return "";
     }
 }

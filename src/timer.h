@@ -6,12 +6,12 @@
 enum class Phase : uint8_t { IDLE, GREEN, YELLOW, FINAL, DONE, PAUSED };
 
 struct TimerState {
-    Phase    phase;
-    Phase    paused_from;       // which phase we were in before pause
-    uint32_t total_seconds;       // green + yellow + final
-    uint32_t remaining_seconds;   // overall remaining
-    uint32_t phase_remaining;     // seconds left in current phase
-    uint32_t phase_total;         // total seconds of current phase
+    Phase phase;
+    Phase paused_from;          // which phase we were in before pause
+    uint32_t total_seconds;     // green + yellow + final
+    uint32_t remaining_seconds; // overall remaining
+    uint32_t phase_remaining;   // seconds left in current phase
+    uint32_t phase_total;       // total seconds of current phase
 };
 
 // Initialize / reset timer to IDLE
