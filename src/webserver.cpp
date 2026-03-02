@@ -261,6 +261,77 @@ static void handle_lock() {
     server.send(200, "text/plain", buttons_locked_ ? "LOCKED" : "UNLOCKED");
 }
 
+// -- BMP helpers for /screenshot --
+
+static void write_le16(uint8_t* buf, uint16_t v) {
+    buf[0] = v & 0xFF;
+    buf[1] = (v >> 8) & 0xFF;
+}
+
+static void write_le32(uint8_t* buf, uint32_t v) {
+    buf[0] = v & 0xFF;
+    buf[1] = (v >> 8) & 0xFF;
+    buf[2] = (v >> 16) & 0xFF;
+    buf[3] = (v >> 24) & 0xFF;
+}
+
+static void handle_screenshot() {
+    int16_t w = M5.Display.width();
+    int16_t h = M5.Display.height();
+
+    uint32_t row_size = static_cast<uint32_t>(w) * 3;
+    uint32_t row_stride = (row_size + 3) & ~3u;  // pad to 4-byte boundary
+    uint32_t img_size = row_stride * h;
+    uint32_t file_size = 54 + img_size;
+
+    // BMP file header (14 bytes) + DIB header (40 bytes)
+    uint8_t hdr[54] = {};
+    hdr[0] = 'B'; hdr[1] = 'M';
+    write_le32(&hdr[2], file_size);
+    write_le32(&hdr[10], 54);       // pixel data offset
+    write_le32(&hdr[14], 40);       // DIB header size
+    write_le32(&hdr[18], static_cast<uint32_t>(w));
+    write_le32(&hdr[22], static_cast<uint32_t>(h));
+    write_le16(&hdr[26], 1);        // color planes
+    write_le16(&hdr[28], 24);       // bits per pixel
+    write_le32(&hdr[34], img_size);
+
+    auto* rgb565 = static_cast<uint16_t*>(malloc(w * sizeof(uint16_t)));
+    auto* row_buf = static_cast<uint8_t*>(malloc(row_stride));
+
+    if (!rgb565 || !row_buf) {
+        free(rgb565);
+        free(row_buf);
+        server.send(500, "text/plain", "Out of memory");
+        return;
+    }
+    memset(row_buf, 0, row_stride);
+
+    server.setContentLength(file_size);
+    server.send(200, "image/bmp", "");
+    server.sendContent(reinterpret_cast<const char*>(hdr), 54);
+
+    // BMP stores rows bottom-to-top
+    for (int16_t y = h - 1; y >= 0; y--) {
+        M5.Display.readRect(0, y, w, 1, rgb565);
+
+        for (int16_t x = 0; x < w; x++) {
+            uint16_t px = rgb565[x];
+            uint8_t r5 = (px >> 11) & 0x1F;
+            uint8_t g6 = (px >> 5) & 0x3F;
+            uint8_t b5 = px & 0x1F;
+            row_buf[x * 3 + 0] = (b5 << 3) | (b5 >> 2);
+            row_buf[x * 3 + 1] = (g6 << 2) | (g6 >> 4);
+            row_buf[x * 3 + 2] = (r5 << 3) | (r5 >> 2);
+        }
+
+        server.sendContent(reinterpret_cast<const char*>(row_buf), row_stride);
+    }
+
+    free(rgb565);
+    free(row_buf);
+}
+
 static void handle_status() {
     const TimerState& ts = timer_state();
 
@@ -321,6 +392,7 @@ static void register_handlers() {
     server.on("/stop", HTTP_POST, handle_stop);
     server.on("/lock", HTTP_POST, handle_lock);
     server.on("/status", HTTP_GET, handle_status);
+    server.on("/screenshot", HTTP_GET, handle_screenshot);
 }
 
 void webserver_start(TimerConfig& cfg) {
