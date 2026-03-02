@@ -160,6 +160,7 @@ void loop() {
     if (webserver_config_changed()) {
         config_load(cfg);
         M5.Speaker.setVolume(cfg.volume);
+        needs_redraw = true;
     }
     if (webserver_start_requested()) {
         timer_start(cfg);

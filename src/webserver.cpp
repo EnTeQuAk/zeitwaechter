@@ -10,18 +10,18 @@
 static constexpr uint32_t WIFI_TIMEOUT_MS = 15000;
 
 static WebServer server(80);
-static TimerConfig* cfg_ = nullptr;
-static bool connected_ = false;
-static bool ap_mode_ = false;
-static bool ap_fallback_ = false;
-static uint32_t wifi_start_ms_ = 0;
-static char ip_buf_[16] = "";
-static bool config_changed_ = false;
-static bool start_requested_ = false;
-static bool pause_requested_ = false;
-static bool resume_requested_ = false;
-static bool stop_requested_ = false;
-static bool buttons_locked_ = false;
+static TimerConfig* _cfg = nullptr;
+static bool _connected = false;
+static bool _ap_mode = false;
+static bool _ap_fallback = false;
+static uint32_t _wifi_start_ms = 0;
+static char _ip_buf[16] = "";
+static bool _config_changed = false;
+static bool _start_requested = false;
+static bool _pause_requested = false;
+static bool _resume_requested = false;
+static bool _stop_requested = false;
+static bool _buttons_locked = false;
 
 // -- HTML: shared head with CSS --
 static const char PAGE_HEAD[] PROGMEM = R"(<!DOCTYPE html>
@@ -129,40 +129,40 @@ static void handle_root() {
     html += F("<div class='phase phase-green'>");
     html += F("<label>&#x1F7E2; Phase 1 — Minuten</label>");
     html += F("<div class='row'><input type='number' name='gm' min='1' max='120' value='");
-    html += cfg_->green_minutes;
+    html += _cfg->green_minutes;
     html += F("' form='f'></div>");
     html += F("<label>Nachricht</label>");
     html += F("<input type='text' name='gmsg' maxlength='63' value='");
-    html += cfg_->green_msg;
+    html += _cfg->green_msg;
     html += F("' form='f'></div>");
 
     // Yellow phase
     html += F("<div class='phase phase-yellow'>");
     html += F("<label>&#x1F7E1; Phase 2 — Minuten</label>");
     html += F("<div class='row'><input type='number' name='ym' min='1' max='120' value='");
-    html += cfg_->yellow_minutes;
+    html += _cfg->yellow_minutes;
     html += F("' form='f'></div>");
     html += F("<label>Nachricht</label>");
     html += F("<input type='text' name='ymsg' maxlength='63' value='");
-    html += cfg_->yellow_msg;
+    html += _cfg->yellow_msg;
     html += F("' form='f'></div>");
 
     // Final phase
     html += F("<div class='phase phase-final'>");
     html += F("<label>&#x1F7E3; Phase 3 — Minuten</label>");
     html += F("<div class='row'><input type='number' name='fm' min='1' max='120' value='");
-    html += cfg_->final_minutes;
+    html += _cfg->final_minutes;
     html += F("' form='f'></div>");
     html += F("<label>Nachricht</label>");
     html += F("<input type='text' name='fmsg' maxlength='63' value='");
-    html += cfg_->final_msg;
+    html += _cfg->final_msg;
     html += F("' form='f'></div>");
 
     // Volume
     html += F("<div class='wifi'>");
     html += F("<label>&#x1F50A; Lautst&auml;rke</label>");
     html += F("<input type='range' name='vol' min='0' max='255' value='");
-    html += cfg_->volume;
+    html += _cfg->volume;
     html += F("' form='f' style='width:100%;accent-color:#4361ee;'>");
     html += F("</div>");
 
@@ -170,11 +170,11 @@ static void handle_root() {
     html += F("<div class='wifi'>");
     html += F("<label>WiFi SSID</label>");
     html += F("<input type='text' name='ssid' maxlength='32' value='");
-    html += cfg_->wifi_ssid;
+    html += _cfg->wifi_ssid;
     html += F("' form='f'>");
     html += F("<label>WiFi Passwort</label>");
     html += F("<input type='password' name='pass' maxlength='63' value='");
-    html += cfg_->wifi_pass;
+    html += _cfg->wifi_pass;
     html += F("' form='f'></div>");
 
     // Submit
@@ -194,46 +194,46 @@ static void handle_root() {
 
 static void handle_save() {
     if (server.hasArg("gm"))
-        cfg_->green_minutes = server.arg("gm").toInt();
+        _cfg->green_minutes = server.arg("gm").toInt();
     if (server.hasArg("ym"))
-        cfg_->yellow_minutes = server.arg("ym").toInt();
+        _cfg->yellow_minutes = server.arg("ym").toInt();
     if (server.hasArg("fm"))
-        cfg_->final_minutes = server.arg("fm").toInt();
+        _cfg->final_minutes = server.arg("fm").toInt();
     if (server.hasArg("vol"))
-        cfg_->volume = constrain(server.arg("vol").toInt(), 0, 255);
+        _cfg->volume = constrain(server.arg("vol").toInt(), 0, 255);
 
     if (server.hasArg("gmsg")) {
-        strncpy(cfg_->green_msg, server.arg("gmsg").c_str(), MSG_MAX_LEN - 1);
-        cfg_->green_msg[MSG_MAX_LEN - 1] = '\0';
+        strncpy(_cfg->green_msg, server.arg("gmsg").c_str(), MSG_MAX_LEN - 1);
+        _cfg->green_msg[MSG_MAX_LEN - 1] = '\0';
     }
     if (server.hasArg("ymsg")) {
-        strncpy(cfg_->yellow_msg, server.arg("ymsg").c_str(), MSG_MAX_LEN - 1);
-        cfg_->yellow_msg[MSG_MAX_LEN - 1] = '\0';
+        strncpy(_cfg->yellow_msg, server.arg("ymsg").c_str(), MSG_MAX_LEN - 1);
+        _cfg->yellow_msg[MSG_MAX_LEN - 1] = '\0';
     }
     if (server.hasArg("fmsg")) {
-        strncpy(cfg_->final_msg, server.arg("fmsg").c_str(), MSG_MAX_LEN - 1);
-        cfg_->final_msg[MSG_MAX_LEN - 1] = '\0';
+        strncpy(_cfg->final_msg, server.arg("fmsg").c_str(), MSG_MAX_LEN - 1);
+        _cfg->final_msg[MSG_MAX_LEN - 1] = '\0';
     }
     if (server.hasArg("ssid")) {
-        strncpy(cfg_->wifi_ssid, server.arg("ssid").c_str(), SSID_MAX_LEN - 1);
-        cfg_->wifi_ssid[SSID_MAX_LEN - 1] = '\0';
+        strncpy(_cfg->wifi_ssid, server.arg("ssid").c_str(), SSID_MAX_LEN - 1);
+        _cfg->wifi_ssid[SSID_MAX_LEN - 1] = '\0';
     }
     if (server.hasArg("pass")) {
-        strncpy(cfg_->wifi_pass, server.arg("pass").c_str(), PASS_MAX_LEN - 1);
-        cfg_->wifi_pass[PASS_MAX_LEN - 1] = '\0';
+        strncpy(_cfg->wifi_pass, server.arg("pass").c_str(), PASS_MAX_LEN - 1);
+        _cfg->wifi_pass[PASS_MAX_LEN - 1] = '\0';
     }
 
     // Clamp
-    if (cfg_->green_minutes < 1)
-        cfg_->green_minutes = 1;
-    if (cfg_->yellow_minutes < 1)
-        cfg_->yellow_minutes = 1;
-    if (cfg_->final_minutes < 1)
-        cfg_->final_minutes = 1;
+    if (_cfg->green_minutes < 1)
+        _cfg->green_minutes = 1;
+    if (_cfg->yellow_minutes < 1)
+        _cfg->yellow_minutes = 1;
+    if (_cfg->final_minutes < 1)
+        _cfg->final_minutes = 1;
 
-    config_save(*cfg_);
+    config_save(*_cfg);
 
-    if (ap_mode_) {
+    if (_ap_mode) {
         String html;
         html.reserve(400);
         html += FPSTR(PAGE_HEAD);
@@ -247,9 +247,9 @@ static void handle_save() {
         return;
     }
 
-    config_changed_ = true;
+    _config_changed = true;
     if (server.hasArg("start"))
-        start_requested_ = true;
+        _start_requested = true;
 
     // Redirect back to main page
     server.sendHeader("Location", "/");
@@ -257,23 +257,23 @@ static void handle_save() {
 }
 
 static void handle_pause() {
-    pause_requested_ = true;
+    _pause_requested = true;
     server.send(200, "text/plain", "OK");
 }
 
 static void handle_resume() {
-    resume_requested_ = true;
+    _resume_requested = true;
     server.send(200, "text/plain", "OK");
 }
 
 static void handle_stop() {
-    stop_requested_ = true;
+    _stop_requested = true;
     server.send(200, "text/plain", "OK");
 }
 
 static void handle_lock() {
-    buttons_locked_ = !buttons_locked_;
-    server.send(200, "text/plain", buttons_locked_ ? "LOCKED" : "UNLOCKED");
+    _buttons_locked = !_buttons_locked;
+    server.send(200, "text/plain", _buttons_locked ? "LOCKED" : "UNLOCKED");
 }
 
 // -- BMP helpers for /screenshot --
@@ -364,7 +364,7 @@ static void handle_status() {
         default: phase_str = "IDLE"; break;
     }
 
-    const char* msg = phase_message(ts.phase, *cfg_);
+    const char* msg = phase_message(ts.phase, *_cfg);
 
     int bat_level = M5.Power.getBatteryLevel();
     bool bat_charging = M5.Power.isCharging();
@@ -382,7 +382,7 @@ static void handle_status() {
     json += F(",\"total\":");
     json += ts.total_seconds;
     json += F(",\"locked\":");
-    json += buttons_locked_ ? F("true") : F("false");
+    json += _buttons_locked ? F("true") : F("false");
     json += F(",\"message\":\"");
     json += msg;
     json += F("\",\"battery\":");
@@ -414,15 +414,15 @@ static void register_handlers() {
 }
 
 void webserver_start(TimerConfig& cfg) {
-    cfg_ = &cfg;
+    _cfg = &cfg;
 
     if (strlen(cfg.wifi_ssid) == 0) {
         Serial.println("No WiFi configured, starting AP mode");
         WiFi.mode(WIFI_AP);
         WiFi.softAP("TimeTracker", "");
         IPAddress ip = WiFi.softAPIP();
-        snprintf(ip_buf_, sizeof(ip_buf_), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-        Serial.printf("AP IP: %s\n", ip_buf_);
+        snprintf(_ip_buf, sizeof(_ip_buf), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        Serial.printf("AP IP: %s\n", _ip_buf);
 
         MDNS.begin("timetracker");
         Serial.println("mDNS started");
@@ -431,55 +431,55 @@ void webserver_start(TimerConfig& cfg) {
         server.begin();
         Serial.println("Web server started on port 80");
 
-        ap_mode_ = true;
-        connected_ = true;
-        Serial.printf("AP mode ready: connect to 'TimeTracker' WiFi, then http://%s/\n", ip_buf_);
+        _ap_mode = true;
+        _connected = true;
+        Serial.printf("AP mode ready: connect to 'TimeTracker' WiFi, then http://%s/\n", _ip_buf);
         return;
     }
 
     Serial.println("WiFi configured, starting STA mode");
     WiFi.mode(WIFI_STA);
     WiFi.begin(cfg.wifi_ssid, cfg.wifi_pass);
-    wifi_start_ms_ = millis();
+    _wifi_start_ms = millis();
 }
 
 void webserver_loop() {
-    if (ap_mode_) {
-        if (connected_) {
+    if (_ap_mode) {
+        if (_connected) {
             server.handleClient();
         }
         return;
     }
 
-    if (cfg_ == nullptr || strlen(cfg_->wifi_ssid) == 0) {
+    if (_cfg == nullptr || strlen(_cfg->wifi_ssid) == 0) {
         return;
     }
 
     // Fall back to AP mode if WiFi doesn't connect in time
-    if (!connected_ && !ap_mode_ && millis() - wifi_start_ms_ > WIFI_TIMEOUT_MS) {
+    if (!_connected && !_ap_mode && millis() - _wifi_start_ms > WIFI_TIMEOUT_MS) {
         Serial.println("WiFi connection timed out, falling back to AP mode");
         WiFi.disconnect(true);
         WiFi.mode(WIFI_AP);
         WiFi.softAP("TimeTracker", "");
         IPAddress ip = WiFi.softAPIP();
-        snprintf(ip_buf_, sizeof(ip_buf_), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-        Serial.printf("AP fallback IP: %s\n", ip_buf_);
+        snprintf(_ip_buf, sizeof(_ip_buf), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        Serial.printf("AP fallback IP: %s\n", _ip_buf);
 
         MDNS.begin("timetracker");
         register_handlers();
         server.begin();
 
-        ap_mode_ = true;
-        ap_fallback_ = true;
-        connected_ = true;
+        _ap_mode = true;
+        _ap_fallback = true;
+        _connected = true;
         return;
     }
 
-    if (!connected_ && WiFi.status() == WL_CONNECTED) {
-        connected_ = true;
+    if (!_connected && WiFi.status() == WL_CONNECTED) {
+        _connected = true;
         IPAddress ip = WiFi.localIP();
-        snprintf(ip_buf_, sizeof(ip_buf_), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-        Serial.printf("WiFi connected, IP: %s\n", ip_buf_);
+        snprintf(_ip_buf, sizeof(_ip_buf), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        Serial.printf("WiFi connected, IP: %s\n", _ip_buf);
 
         WiFi.setSleep(true); // modem sleep between beacons, saves ~20-40mA
         MDNS.begin("timetracker");
@@ -487,13 +487,13 @@ void webserver_loop() {
         register_handlers();
         server.begin();
 
-        Serial.printf("Web server at http://%s/ (timetracker.local)\n", ip_buf_);
+        Serial.printf("Web server at http://%s/ (timetracker.local)\n", _ip_buf);
     }
 
-    if (connected_) {
+    if (_connected) {
         // Detect WiFi disconnect and reconnect
         if (WiFi.status() != WL_CONNECTED) {
-            connected_ = false;
+            _connected = false;
             Serial.println("WiFi disconnected, reconnecting...");
             WiFi.reconnect();
             return;
@@ -504,53 +504,53 @@ void webserver_loop() {
 }
 
 bool webserver_connected() {
-    return connected_;
+    return _connected;
 }
 
 const char* webserver_ip() {
-    return ip_buf_;
+    return _ip_buf;
 }
 
 bool webserver_config_changed() {
-    bool v = config_changed_;
-    config_changed_ = false;
+    bool v = _config_changed;
+    _config_changed = false;
     return v;
 }
 
 bool webserver_start_requested() {
-    bool v = start_requested_;
-    start_requested_ = false;
+    bool v = _start_requested;
+    _start_requested = false;
     return v;
 }
 
 bool webserver_pause_requested() {
-    bool v = pause_requested_;
-    pause_requested_ = false;
+    bool v = _pause_requested;
+    _pause_requested = false;
     return v;
 }
 
 bool webserver_resume_requested() {
-    bool v = resume_requested_;
-    resume_requested_ = false;
+    bool v = _resume_requested;
+    _resume_requested = false;
     return v;
 }
 
 bool webserver_stop_requested() {
-    bool v = stop_requested_;
-    stop_requested_ = false;
+    bool v = _stop_requested;
+    _stop_requested = false;
     return v;
 }
 
 bool webserver_buttons_locked() {
-    return buttons_locked_;
+    return _buttons_locked;
 }
 
 bool webserver_ap_mode() {
-    return ap_mode_;
+    return _ap_mode;
 }
 
 bool webserver_ap_fallback() {
-    bool v = ap_fallback_;
-    ap_fallback_ = false;
+    bool v = _ap_fallback;
+    _ap_fallback = false;
     return v;
 }

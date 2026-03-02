@@ -37,7 +37,7 @@ speaker, touch buttons). M5Dial support planned.
 - **Power-optimized**: 80MHz CPU, WiFi modem sleep, Bluetooth disabled
 - **Battery indicator**: real-time charge level and charging state
 - **Speaker volume control**: adjustable via web UI, saved to flash
-- **WiFi AP fallback**: first boot creates "TimeTracker" AP for WiFi setup
+- **WiFi AP fallback**: creates "TimeTracker" AP on first boot or if WiFi fails to connect
 - **NVS persistence**: all settings saved across reboots
 - **DejaVu fonts**: readable text with auto-fit and word-wrap
 
@@ -77,6 +77,9 @@ python ~/.platformio/packages/tool-esptoolpy/esptool.py \
 5. Device reboots and connects to your WiFi
 6. Access the web UI at `http://timetracker.local`
 
+If you ever enter wrong WiFi credentials, the device falls back to the
+TimeTracker AP after 15 seconds so you can fix them.
+
 ## Usage
 
 ### Web UI (parent)
@@ -85,7 +88,7 @@ Open `http://timetracker.local` on your phone:
 
 - Set phase durations (minutes) and messages per phase
 - Adjust speaker volume
-- **Save & Start** to begin the countdown
+- **Save** to store settings, **Save & Start** to also begin the countdown
 
 While the timer runs, the web UI switches to a control panel:
 
@@ -152,12 +155,13 @@ src/
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/` | GET | Web UI |
-| `/save` | POST | Save config & start timer |
+| `/save` | POST | Save config (add `start=1` to also start timer) |
 | `/pause` | POST | Pause countdown |
 | `/resume` | POST | Resume countdown |
 | `/stop` | POST | Stop timer / acknowledge alarm |
 | `/lock` | POST | Toggle button lock |
 | `/status` | GET | Timer state + battery JSON |
+| `/screenshot` | GET | BMP screenshot of the current display |
 
 ## License
 
