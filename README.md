@@ -5,6 +5,10 @@
 </p>
 
 <p align="center">
+  <a href="docs/screenshots/device.jpg"><img src="docs/screenshots/device.jpg" width="240"></a>
+</p>
+
+<p align="center">
   <a href="docs/screenshots/display-running.png"><img src="docs/screenshots/display-running.png" width="160"></a>
   <a href="docs/screenshots/display-yellow.png"><img src="docs/screenshots/display-yellow.png" width="160"></a>
   <a href="docs/screenshots/display-final.png"><img src="docs/screenshots/display-final.png" width="160"></a>
