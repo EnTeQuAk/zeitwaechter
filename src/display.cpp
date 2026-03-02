@@ -19,7 +19,7 @@ static uint16_t dim_color(uint16_t c) {
 static constexpr int16_t BAR_H = 22;
 static constexpr int16_t BAR_BOTTOM_MARGIN = 28; // space for hint text below
 
-// Draw a 3-phase progress bar. Elapsed portions are dimmed, remaining are bright.
+// Draw a 3-phase progress bar with a star marker at the current position.
 static void draw_phase_bar(const TimerState& ts, const TimerConfig& cfg) {
     int16_t bar_w = g_screen_w - (g_margin * 2);
     int16_t x = g_margin;
@@ -37,55 +37,47 @@ static void draw_phase_bar(const TimerState& ts, const TimerConfig& cfg) {
     int16_t yw = static_cast<int16_t>(static_cast<int32_t>(bar_w) * y_sec / total);
     int16_t fw = bar_w - gw - yw; // remainder to avoid rounding gaps
 
-    // Elapsed seconds
     uint32_t elapsed = ts.total_seconds - ts.remaining_seconds;
 
-    // Draw each phase segment
+    // Draw all segments in their bright color
+    int16_t cx = x;
     struct Seg {
         int16_t w;
         uint16_t col;
-        uint32_t start;
-        uint32_t dur;
     };
     Seg segs[3] = {
-        {gw, COL_GREEN, 0, g_sec},
-        {yw, COL_YELLOW, g_sec, y_sec},
-        {fw, COL_FINAL, g_sec + y_sec, f_sec},
+        {gw, COL_GREEN},
+        {yw, COL_YELLOW},
+        {fw, COL_FINAL},
     };
-
-    int16_t cx = x;
     for (int i = 0; i < 3; i++) {
-        if (segs[i].w <= 0)
-            continue;
-
-        uint32_t seg_end = segs[i].start + segs[i].dur;
-
-        if (elapsed >= seg_end) {
-            // Entire segment elapsed, dim
-            M5.Display.fillRect(cx, y, segs[i].w, BAR_H, dim_color(segs[i].col));
-        } else if (elapsed <= segs[i].start) {
-            // Entire segment in the future, bright
+        if (segs[i].w > 0) {
             M5.Display.fillRect(cx, y, segs[i].w, BAR_H, segs[i].col);
-        } else {
-            // Partially elapsed, split bright/dim
-            float seg_frac =
-                static_cast<float>(elapsed - segs[i].start) / static_cast<float>(segs[i].dur);
-            int16_t dim_w = static_cast<int16_t>(segs[i].w * seg_frac);
-            if (dim_w > 0) {
-                M5.Display.fillRect(cx, y, dim_w, BAR_H, dim_color(segs[i].col));
-            }
-            if (dim_w < segs[i].w) {
-                M5.Display.fillRect(cx + dim_w, y, segs[i].w - dim_w, BAR_H, segs[i].col);
-            }
+            cx += segs[i].w;
         }
-        cx += segs[i].w;
     }
 
-    // Rounded corners (draw 2px border radius effect at edges)
+    // Rounded corners
     M5.Display.fillRect(x, y, 2, 2, COL_BG);
     M5.Display.fillRect(x, y + BAR_H - 2, 2, 2, COL_BG);
     M5.Display.fillRect(x + bar_w - 2, y, 2, 2, COL_BG);
     M5.Display.fillRect(x + bar_w - 2, y + BAR_H - 2, 2, 2, COL_BG);
+
+    // Star marker at current position
+    if (elapsed > 0 && elapsed < total) {
+        int16_t star_x = x + static_cast<int16_t>(static_cast<int32_t>(bar_w) * elapsed / total);
+        int16_t star_y = y - 2; // just above the bar
+        uint16_t star_col = dim_color(phase_color(ts.phase));
+
+        // Clear area above bar for the star (avoid ghosting from previous position)
+        M5.Display.fillRect(x, y - 18, bar_w, 18, COL_BG);
+
+        M5.Display.setTextColor(star_col, COL_BG);
+        M5.Display.setTextDatum(bottom_center);
+        M5.Display.setFont(&fonts::DejaVu18);
+        M5.Display.setTextSize(1);
+        M5.Display.drawString("\xe2\x98\x85", star_x, star_y); // ★ U+2605
+    }
 }
 
 // Draw text centered, auto-wrapping at word boundaries if too wide.

@@ -89,7 +89,7 @@ static const char PAGE_SCRIPT[] PROGMEM = R"js(
 const colors={GREEN:'#10b981',YELLOW:'#f59e0b',FINAL:'#e040fb',DONE:'#e040fb',PAUSED:'#888'};
 function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 function doAction(u){fetch(u,{method:'POST'});}
-function showCfg(){document.getElementById('ctrl').style.display='none';document.getElementById('cfg').style.display='block';}
+function showCfg(){document.getElementById('ctrl').style.display='none';document.getElementById('cfg').style.display='block';updateCfgStop();}
 function poll(){
 fetch('/status').then(r=>r.json()).then(d=>{
 const ctrl=document.getElementById('ctrl'),cfg=document.getElementById('cfg');
@@ -108,6 +108,11 @@ document.getElementById('resume-btn').style.display=isPaused?'block':'none';
 document.getElementById('stop-btn').style.display=isDone?'block':'none';
 document.getElementById('lock-btn').textContent=d.locked?'\u{1F512} Entsperren':'\u{1F513} Sperren';
 }).catch(()=>{});}
+function updateCfgStop(){
+fetch('/status').then(r=>r.json()).then(d=>{
+const b=document.getElementById('cfg-stop');
+if(b)b.style.display=(d.phase!=='IDLE')?'block':'none';
+}).catch(()=>{});}
 setInterval(poll,1000);poll();
 setInterval(()=>{const e=document.getElementById('clock');if(e)e.textContent=new Date().toLocaleTimeString('de-DE');},1000);
 </script>
@@ -124,6 +129,9 @@ static void handle_root() {
     // Config form
     html += F("<div id='cfg'>");
     html += F("<h1>&#9202; Time Tracker</h1>");
+    html += F("<button id='cfg-stop' class='btn' style='background:#ef4444;display:none;"
+              "margin-bottom:12px' onclick=\"doAction('/stop');this.style.display='none'\">"
+              "&#9209; Timer stoppen</button>");
 
     // Green phase
     html += F("<div class='phase phase-green'>");
@@ -248,6 +256,7 @@ static void handle_save() {
     }
 
     _config_changed = true;
+    _stop_requested = true;
     if (server.hasArg("start"))
         _start_requested = true;
 
