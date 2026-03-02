@@ -19,6 +19,29 @@ static uint16_t dim_color(uint16_t c) {
 static constexpr int16_t BAR_H = 22;
 static constexpr int16_t BAR_BOTTOM_MARGIN = 28; // space for hint text below
 
+// Filled 5-pointed star centered at (cx, cy) with outer radius r.
+static void draw_star(int16_t cx, int16_t cy, int16_t r, uint16_t col) {
+    constexpr float kPi = 3.14159265f;
+    float inner_r = r * 0.38f;
+
+    // 10 vertices alternating outer/inner
+    int16_t px[10], py[10];
+    for (int i = 0; i < 5; i++) {
+        float oa = (i * 72 - 90) * kPi / 180.0f;
+        float ia = (i * 72 - 54) * kPi / 180.0f;
+        px[i * 2] = cx + static_cast<int16_t>(r * cosf(oa));
+        py[i * 2] = cy + static_cast<int16_t>(r * sinf(oa));
+        px[i * 2 + 1] = cx + static_cast<int16_t>(inner_r * cosf(ia));
+        py[i * 2 + 1] = cy + static_cast<int16_t>(inner_r * sinf(ia));
+    }
+
+    // Fill from center to each adjacent vertex pair
+    for (int i = 0; i < 10; i++) {
+        int j = (i + 1) % 10;
+        M5.Display.fillTriangle(cx, cy, px[i], py[i], px[j], py[j], col);
+    }
+}
+
 // Draw a 3-phase progress bar with a star marker at the current position.
 static void draw_phase_bar(const TimerState& ts, const TimerConfig& cfg) {
     int16_t bar_w = g_screen_w - (g_margin * 2);
@@ -63,20 +86,11 @@ static void draw_phase_bar(const TimerState& ts, const TimerConfig& cfg) {
     M5.Display.fillRect(x + bar_w - 2, y, 2, 2, COL_BG);
     M5.Display.fillRect(x + bar_w - 2, y + BAR_H - 2, 2, 2, COL_BG);
 
-    // Star marker at current position
+    // Star marker centered on the bar at the current position
     if (elapsed > 0 && elapsed < total) {
         int16_t star_x = x + static_cast<int16_t>(static_cast<int32_t>(bar_w) * elapsed / total);
-        int16_t star_y = y - 2; // just above the bar
-        uint16_t star_col = dim_color(phase_color(ts.phase));
-
-        // Clear area above bar for the star (avoid ghosting from previous position)
-        M5.Display.fillRect(x, y - 18, bar_w, 18, COL_BG);
-
-        M5.Display.setTextColor(star_col, COL_BG);
-        M5.Display.setTextDatum(bottom_center);
-        M5.Display.setFont(&fonts::DejaVu18);
-        M5.Display.setTextSize(1);
-        M5.Display.drawString("\xe2\x98\x85", star_x, star_y); // ★ U+2605
+        int16_t star_y = y + BAR_H / 2;
+        draw_star(star_x, star_y, 14, dim_color(phase_color(ts.phase)));
     }
 }
 
