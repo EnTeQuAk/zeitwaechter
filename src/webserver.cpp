@@ -256,9 +256,10 @@ static void handle_save() {
     }
 
     _config_changed = true;
-    _stop_requested = true;
     if (server.hasArg("start"))
         _start_requested = true;
+    else
+        _stop_requested = true;
 
     // Redirect back to main page
     server.sendHeader("Location", "/");
