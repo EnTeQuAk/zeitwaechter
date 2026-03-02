@@ -6,6 +6,7 @@
 
 <p align="center">
   <img src="docs/screenshots/display-running.png" width="320" alt="Display showing green phase countdown with star progress marker">
+  <img src="docs/screenshots/display-yellow.png" width="320" alt="Display showing yellow phase countdown">
   <img src="docs/screenshots/web-controls.png" width="240" alt="Web UI control panel with pause and lock buttons">
   <img src="docs/screenshots/web-config.png" width="240" alt="Web UI settings with phase durations and messages">
 </p>
