@@ -7,10 +7,13 @@
 #include <M5Unified.h>
 #include "timer.h"
 
+static constexpr uint32_t WIFI_TIMEOUT_MS = 15000;
+
 static WebServer server(80);
 static TimerConfig* cfg_ = nullptr;
 static bool connected_ = false;
 static bool ap_mode_ = false;
+static uint32_t wifi_start_ms_ = 0;
 static char ip_buf_[16] = "";
 static bool config_changed_ = false;
 static bool start_requested_ = false;
@@ -436,6 +439,7 @@ void webserver_start(TimerConfig& cfg) {
     Serial.println("WiFi configured, starting STA mode");
     WiFi.mode(WIFI_STA);
     WiFi.begin(cfg.wifi_ssid, cfg.wifi_pass);
+    wifi_start_ms_ = millis();
 }
 
 void webserver_loop() {
@@ -443,6 +447,25 @@ void webserver_loop() {
         if (ap_mode_ && connected_) {
             server.handleClient();
         }
+        return;
+    }
+
+    // Fall back to AP mode if WiFi doesn't connect in time
+    if (!connected_ && !ap_mode_ && millis() - wifi_start_ms_ > WIFI_TIMEOUT_MS) {
+        Serial.println("WiFi connection timed out, falling back to AP mode");
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_AP);
+        WiFi.softAP("TimeTracker", "");
+        IPAddress ip = WiFi.softAPIP();
+        snprintf(ip_buf_, sizeof(ip_buf_), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        Serial.printf("AP fallback IP: %s\n", ip_buf_);
+
+        MDNS.begin("timetracker");
+        register_handlers();
+        server.begin();
+
+        ap_mode_ = true;
+        connected_ = true;
         return;
     }
 
