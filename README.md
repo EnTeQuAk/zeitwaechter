@@ -17,7 +17,7 @@ your kid can plan their playing. Parents set durations and messages per
 phase via a web UI on their phone. The device is child-proof during
 operation.
 
-Inspired by the [AURIOL Time Tracker](https://www.lidl.de/) concept,
+Inspired by the [AURIOL Time Tracker](https://www.discounto.de/Angebot/AURIOL-Time-Tracker-mit-digitaler-Anzeige-9969069/) concept,
 built on M5Stack hardware.
 
 ## Hardware
